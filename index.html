@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Math Match Game</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Comic Sans MS', 'Chalkboard SE', cursive;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      position: relative;
+    }
+
+    /* ── floating bubbles background ── */
+    .bubble {
+      position: fixed;
+      border-radius: 50%;
+      opacity: 0.15;
+      animation: floatUp linear infinite;
+      pointer-events: none;
+    }
+    @keyframes floatUp {
+      0%   { transform: translateY(110vh) scale(1); opacity: 0.15; }
+      100% { transform: translateY(-20vh) scale(1.2); opacity: 0; }
+    }
+
+    /* ── header ── */
+    header {
+      text-align: center;
+      margin-bottom: 20px;
+      animation: bounceIn 0.6s ease;
+    }
+    header h1 {
+      font-size: clamp(2rem, 6vw, 3.5rem);
+      color: #fff;
+      text-shadow: 3px 3px 0 #e91e63, 5px 5px 0 rgba(0,0,0,.2);
+    }
+    header p {
+      color: #ffe0f7;
+      font-size: 1.1rem;
+      margin-top: 6px;
+    }
+
+    /* ── score bar ── */
+    #scorebar {
+      display: flex;
+      gap: 28px;
+      margin-bottom: 18px;
+      background: rgba(255,255,255,.2);
+      padding: 10px 28px;
+      border-radius: 50px;
+      backdrop-filter: blur(6px);
+    }
+    .score-item { color: #fff; font-size: 1.1rem; font-weight: bold; }
+    .score-item span { font-size: 1.4rem; color: #ffe082; }
+
+    /* ── game card ── */
+    #game-card {
+      background: rgba(255,255,255,.95);
+      border-radius: 28px;
+      padding: 40px 50px;
+      width: min(520px, 94vw);
+      box-shadow: 0 20px 60px rgba(0,0,0,.3);
+      text-align: center;
+      position: relative;
+      animation: slideUp 0.5s ease;
+    }
+    @keyframes slideUp {
+      from { transform: translateY(40px); opacity: 0; }
+      to   { transform: translateY(0);    opacity: 1; }
+    }
+
+    /* question */
+    #question {
+      font-size: clamp(2.8rem, 8vw, 4.5rem);
+      font-weight: bold;
+      color: #4a148c;
+      margin-bottom: 10px;
+      letter-spacing: 4px;
+      min-height: 80px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    #hint {
+      font-size: 1rem;
+      color: #9c27b0;
+      margin-bottom: 28px;
+      min-height: 22px;
+    }
+
+    /* answer grid */
+    #answers {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    .ans-btn {
+      background: linear-gradient(135deg, #42a5f5, #1976d2);
+      color: #fff;
+      border: none;
+      border-radius: 18px;
+      font-size: clamp(2rem, 5vw, 3rem);
+      font-family: inherit;
+      font-weight: bold;
+      padding: 22px 10px;
+      cursor: pointer;
+      box-shadow: 0 6px 0 #0d47a1, 0 8px 15px rgba(0,0,0,.2);
+      transition: transform .1s, box-shadow .1s;
+      user-select: none;
+    }
+    .ans-btn:active {
+      transform: translateY(4px);
+      box-shadow: 0 2px 0 #0d47a1, 0 4px 8px rgba(0,0,0,.2);
+    }
+    .ans-btn:hover:not(:disabled) {
+      background: linear-gradient(135deg, #64b5f6, #2196f3);
+    }
+    .ans-btn:disabled { cursor: default; }
+
+    .ans-btn.correct {
+      background: linear-gradient(135deg, #66bb6a, #388e3c) !important;
+      box-shadow: 0 6px 0 #1b5e20, 0 8px 15px rgba(0,0,0,.2);
+      animation: correctPulse .4s ease;
+    }
+    .ans-btn.wrong {
+      background: linear-gradient(135deg, #ef5350, #c62828) !important;
+      box-shadow: 0 6px 0 #7f0000, 0 8px 15px rgba(0,0,0,.2);
+      animation: wrongShake .4s ease;
+    }
+
+    @keyframes correctPulse {
+      0%   { transform: scale(1); }
+      40%  { transform: scale(1.12); }
+      70%  { transform: scale(.96); }
+      100% { transform: scale(1); }
+    }
+    @keyframes wrongShake {
+      0%,100% { transform: translateX(0); }
+      20%     { transform: translateX(-10px); }
+      40%     { transform: translateX(10px); }
+      60%     { transform: translateX(-8px); }
+      80%     { transform: translateX(8px); }
+    }
+
+    /* next button */
+    #next-btn {
+      display: none;
+      margin: 0 auto;
+      background: linear-gradient(135deg, #ff9800, #e65100);
+      color: #fff;
+      border: none;
+      border-radius: 50px;
+      font-size: 1.3rem;
+      font-family: inherit;
+      font-weight: bold;
+      padding: 14px 44px;
+      cursor: pointer;
+      box-shadow: 0 6px 0 #bf360c;
+      animation: bounceIn .5s ease;
+      transition: transform .1s;
+    }
+    #next-btn:active { transform: translateY(3px); box-shadow: 0 3px 0 #bf360c; }
+    #next-btn:hover  { background: linear-gradient(135deg, #ffa726, #f57c00); }
+
+    /* ── stars overlay ── */
+    #stars-overlay {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 999;
+    }
+    .star-pop {
+      position: absolute;
+      font-size: 2.6rem;
+      animation: starFly 1.2s ease forwards;
+      user-select: none;
+    }
+    @keyframes starFly {
+      0%   { transform: translate(-50%,-50%) scale(.4) rotate(0deg);   opacity: 1; }
+      60%  { transform: translate(-50%,-200%) scale(1.3) rotate(45deg); opacity: 1; }
+      100% { transform: translate(-50%,-320%) scale(.8) rotate(90deg);  opacity: 0; }
+    }
+
+    /* ── feedback banner ── */
+    #feedback {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%,-50%) scale(0);
+      background: rgba(0,0,0,.82);
+      color: #fff;
+      font-size: clamp(1.8rem, 5vw, 3rem);
+      padding: 22px 48px;
+      border-radius: 24px;
+      z-index: 1000;
+      pointer-events: none;
+      transition: transform .25s cubic-bezier(.34,1.56,.64,1), opacity .25s;
+      opacity: 0;
+      text-align: center;
+    }
+    #feedback.show {
+      transform: translate(-50%,-50%) scale(1);
+      opacity: 1;
+    }
+
+    /* ── level badge ── */
+    #level-badge {
+      position: absolute;
+      top: -18px;
+      right: 22px;
+      background: linear-gradient(135deg,#ff6f00,#ffd600);
+      color: #fff;
+      font-size: .95rem;
+      font-weight: bold;
+      padding: 5px 18px;
+      border-radius: 50px;
+      box-shadow: 0 3px 10px rgba(0,0,0,.2);
+    }
+
+    /* ── progress bar ── */
+    #progress-wrap {
+      width: 100%;
+      height: 10px;
+      background: #e0e0e0;
+      border-radius: 10px;
+      margin-bottom: 22px;
+      overflow: hidden;
+    }
+    #progress-bar {
+      height: 100%;
+      background: linear-gradient(90deg,#ff9800,#f44336);
+      border-radius: 10px;
+      transition: width .4s ease;
+    }
+
+    @keyframes bounceIn {
+      0%   { transform: scale(.5); opacity: 0; }
+      70%  { transform: scale(1.1); }
+      100% { transform: scale(1);  opacity: 1; }
+    }
+
+    /* responsive */
+    @media (max-width: 420px) {
+      #game-card { padding: 28px 22px; }
+      .ans-btn   { padding: 18px 6px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- floating bubbles (generated by JS) -->
+<div id="stars-overlay"></div>
+<div id="feedback"></div>
+
+<header>
+  <h1>🧮 Math Match!</h1>
+  <p>Pick the right answer ⭐</p>
+</header>
+
+<div id="scorebar">
+  <div class="score-item">⭐ Stars: <span id="star-count">0</span></div>
+  <div class="score-item">✅ Correct: <span id="correct-count">0</span></div>
+  <div class="score-item">❌ Wrong: <span id="wrong-count">0</span></div>
+</div>
+
+<div id="game-card">
+  <div id="level-badge">Level 1</div>
+  <div id="progress-wrap"><div id="progress-bar" style="width:0%"></div></div>
+  <div id="question">Loading…</div>
+  <div id="hint">What is the answer?</div>
+  <div id="answers"></div>
+  <button id="next-btn" onclick="nextQuestion()">Next ➡️</button>
+</div>
+
+<script>
+// ── Audio Context (Web Audio API) ─────────────────────────────────────────────
+const AudioCtx = window.AudioContext || window.webkitAudioContext;
+let audioCtx;
+
+function getAudio() {
+  if (!audioCtx) audioCtx = new AudioCtx();
+  return audioCtx;
+}
+
+function playTone(freq, type, duration, vol, delay = 0) {
+  const ctx = getAudio();
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+  osc.connect(gain);
+  gain.connect(ctx.destination);
+  osc.type = type;
+  osc.frequency.setValueAtTime(freq, ctx.currentTime + delay);
+  gain.gain.setValueAtTime(0, ctx.currentTime + delay);
+  gain.gain.linearRampToValueAtTime(vol, ctx.currentTime + delay + 0.02);
+  gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + delay + duration);
+  osc.start(ctx.currentTime + delay);
+  osc.stop(ctx.currentTime + delay + duration + 0.05);
+}
+
+function playCongrats() {
+  // Happy fanfare: C-E-G-C chord + ascending melody
+  const notes = [523, 659, 784, 1047, 784, 1047, 1319];
+  notes.forEach((f, i) => playTone(f, 'sine', 0.22, 0.18, i * 0.13));
+}
+
+function playWrong() {
+  // Descending sad tones
+  playTone(300, 'sawtooth', 0.18, 0.15, 0);
+  playTone(220, 'sawtooth', 0.22, 0.15, 0.18);
+}
+
+function playClick() {
+  playTone(800, 'sine', 0.08, 0.1);
+}
+
+// ── Game State ────────────────────────────────────────────────────────────────
+let stars = 0, correctCount = 0, wrongCount = 0;
+let currentAnswer = 0;
+let questionsAnswered = 0;
+const QUESTIONS_PER_LEVEL = 5;
+let level = 1;
+let answered = false;
+
+const messages = {
+  correct: ['Amazing! 🎉','Brilliant! 🌟','Fantastic! 🚀','Super! 🦄','Perfect! 🏆','WOW! 💥','Keep it up! 🎯'],
+  wrong:   ['Try next time! 💪','Almost! 😅','You got this! 🌈','Keep going! 🔥','Don\'t give up! 💛']
+};
+
+function rand(a, b) { return Math.floor(Math.random() * (b - a + 1)) + a; }
+
+function generateQuestion() {
+  const op = Math.random() < 0.5 ? '+' : '-';
+  let a, b;
+  if (op === '+') {
+    a = rand(0, 15);
+    b = rand(0, Math.min(20 - a, 15));
+  } else {
+    a = rand(0, 20);
+    b = rand(0, a);
+  }
+  const answer = op === '+' ? a + b : a - b;
+  return { text: `${a}  ${op}  ${b}  =  ?`, answer };
+}
+
+function shuffle(arr) {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = rand(0, i);
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
+function generateChoices(correct) {
+  const set = new Set([correct]);
+  while (set.size < 4) {
+    let fake = correct + rand(-5, 5);
+    if (fake < 0) fake = 0;
+    if (fake > 20) fake = 20;
+    set.add(fake);
+  }
+  return shuffle([...set]);
+}
+
+function nextQuestion() {
+  answered = false;
+  document.getElementById('next-btn').style.display = 'none';
+  const q = generateQuestion();
+  currentAnswer = q.answer;
+
+  document.getElementById('question').textContent = q.text;
+  document.getElementById('hint').textContent = '👆 Tap the right answer!';
+
+  const choices = generateChoices(currentAnswer);
+  const grid = document.getElementById('answers');
+  grid.innerHTML = '';
+  choices.forEach(val => {
+    const btn = document.createElement('button');
+    btn.className = 'ans-btn';
+    btn.textContent = val;
+    btn.onclick = () => checkAnswer(val, btn);
+    grid.appendChild(btn);
+  });
+
+  // progress
+  const pct = (questionsAnswered % QUESTIONS_PER_LEVEL) / QUESTIONS_PER_LEVEL * 100;
+  document.getElementById('progress-bar').style.width = pct + '%';
+}
+
+function checkAnswer(val, btn) {
+  if (answered) return;
+  answered = true;
+  playClick();
+
+  // disable all buttons
+  document.querySelectorAll('.ans-btn').forEach(b => b.disabled = true);
+
+  if (val === currentAnswer) {
+    btn.classList.add('correct');
+    stars += level;
+    correctCount++;
+    questionsAnswered++;
+    updateScore();
+    playCongrats();
+    showFeedback(messages.correct[rand(0, messages.correct.length - 1)], true);
+    spawnStars(btn);
+    checkLevelUp();
+  } else {
+    btn.classList.add('wrong');
+    wrongCount++;
+    updateScore();
+    playWrong();
+    showFeedback(messages.wrong[rand(0, messages.wrong.length - 1)], false);
+    // highlight correct
+    document.querySelectorAll('.ans-btn').forEach(b => {
+      if (parseInt(b.textContent) === currentAnswer) b.classList.add('correct');
+    });
+  }
+
+  setTimeout(() => {
+    hideFeedback();
+    document.getElementById('next-btn').style.display = 'block';
+  }, 1600);
+}
+
+function updateScore() {
+  document.getElementById('star-count').textContent = stars;
+  document.getElementById('correct-count').textContent = correctCount;
+  document.getElementById('wrong-count').textContent = wrongCount;
+}
+
+function checkLevelUp() {
+  if (questionsAnswered > 0 && questionsAnswered % QUESTIONS_PER_LEVEL === 0) {
+    level = Math.min(level + 1, 3);
+    document.getElementById('level-badge').textContent = `Level ${level}`;
+  }
+}
+
+// ── Feedback banner ────────────────────────────────────────────────────────────
+function showFeedback(msg, good) {
+  const el = document.getElementById('feedback');
+  el.textContent = (good ? '🎉 ' : '😢 ') + msg;
+  el.style.background = good ? 'rgba(27,94,32,.9)' : 'rgba(183,28,28,.9)';
+  el.classList.add('show');
+}
+function hideFeedback() {
+  document.getElementById('feedback').classList.remove('show');
+}
+
+// ── Stars animation ─────────────────────────────────────────────────────────
+const STAR_EMOJIS = ['⭐','🌟','✨','💫','🎊','🎉','🏆'];
+
+function spawnStars(btn) {
+  const overlay = document.getElementById('stars-overlay');
+  const rect = btn.getBoundingClientRect();
+  const cx = rect.left + rect.width / 2;
+  const cy = rect.top + rect.height / 2;
+
+  const count = 6 + level * 2;
+  for (let i = 0; i < count; i++) {
+    setTimeout(() => {
+      const s = document.createElement('div');
+      s.className = 'star-pop';
+      s.textContent = STAR_EMOJIS[rand(0, STAR_EMOJIS.length - 1)];
+      s.style.left = (cx + rand(-80, 80)) + 'px';
+      s.style.top  = cy + 'px';
+      s.style.fontSize = rand(24, 42) + 'px';
+      overlay.appendChild(s);
+      setTimeout(() => s.remove(), 1400);
+    }, i * 60);
+  }
+}
+
+// ── Floating bubbles background ───────────────────────────────────────────────
+function createBubbles() {
+  const colors = ['#ff6f00','#e91e63','#9c27b0','#2196f3','#00bcd4','#4caf50','#ffeb3b'];
+  for (let i = 0; i < 18; i++) {
+    const b = document.createElement('div');
+    b.className = 'bubble';
+    const size = rand(30, 90);
+    b.style.cssText = `
+      width:${size}px; height:${size}px;
+      background:${colors[rand(0,colors.length-1)]};
+      left:${rand(0,100)}%;
+      animation-duration:${rand(8,20)}s;
+      animation-delay:-${rand(0,18)}s;
+    `;
+    document.body.appendChild(b);
+  }
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+createBubbles();
+nextQuestion();
+</script>
+</body>
+</html>
